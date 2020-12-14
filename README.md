@@ -1,4 +1,4 @@
 # ChaoticCommunications.jl
 
-A Package for the Simulations of Chaotic Communications Systems
+A package for the simulations of chaotic communications systems
 
