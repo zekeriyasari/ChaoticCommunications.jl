@@ -2,3 +2,7 @@ name = "ChaoticCommunications"
 uuid = "fe2786b3-65c3-4aa6-8510-8b94f88fb78c"
 authors = ["zekeriya.sari <zekeriya.sari@deu.edu.tr>"]
 version = "0.1.0"
+
+[deps]
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
