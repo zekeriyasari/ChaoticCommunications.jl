@@ -1,5 +1,10 @@
 module ChaoticCommunications
 
-greet() = print("Hello World!")
+using DifferentialEquations 
+using Statistics 
+using DocStringExtensions
+
+include("maps.jl") 
+include("blocks.jl") 
 
 end # module
