@@ -11,15 +11,17 @@ for cmap in [:Logistic, :Cubic, :Tent, :Henon, :Bernoulli]
         # Fields 
             $TYPEDFIELDS
         """
-        struct $cmap <: AbstractMap 
+        mutable struct $cmap <: AbstractMap 
             "Initial condition"
-            x0::Vector{Float64} 
+            x::Vector{Float64} 
+            "Initial time"
+            t::Float64 
         end
     end
     if cmap == :Henon 
-        @eval $cmap() = $cmap(rand(2))
+        @eval $cmap() = $cmap(rand(2), 0.)
     else 
-        @eval $cmap() = $cmap(rand(1))
+        @eval $cmap() = $cmap(rand(1), 0.)
     end
 end
 
@@ -39,13 +41,19 @@ normalize(x) = (x .- mean(x)) / std(x)
 """
     $SIGNATURES
 
-Returns a trajectory of `camp` for a time span of `tspan`.
-
-!!! note 
-    If state space of `cmap` is multidimensional, the first dimension is returned. 
+Returns the dimension of the state space of `cmap`. 
 """
-function trajectory(cmap::AbstractMap, tspan)
-    sol = solve(DiscreteProblem(cmap, cmap.x0, tspan))
-    normalize(getindex.(sol.u, 1)) 
+statedim(cmap::AbstractMap) = length(cmap.x)
+
+"""
+    $SIGNATURES
+
+Returns a trajectory of `camp` for a time span of `tspan`. `idx` is the indices of trajectory to be returned. 
+"""
+function trajectory(cmap::AbstractMap, dt, idx=1)
+    sol = solve(DiscreteProblem(cmap, cmap.x, (cmap.t, cmap.t + dt)))
+    cmap.t = sol.t[end] 
+    cmap.x = sol.u[end]
+    map(i -> normalize(getindex.(sol.u, i)), idx) 
 end
 
