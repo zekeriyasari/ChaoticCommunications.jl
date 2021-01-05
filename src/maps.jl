@@ -1,35 +1,121 @@
 # This file includes chaotic maps 
 
-export Logistic, Cubic, Tent, Henon, Bernoulli, trajectory, normalize 
+export Logistic, Cubic, Tent, Henon, Bernoulli, 
+    Lorenz, Chua, Rossler,  
+    trajectory!, normalize 
 
-abstract type AbstractMap end
+abstract type AbstractOscillator end 
+abstract type AbstractDiscreteOscillator <: AbstractOscillator  end
+abstract type AbstractContinuousOscillator <: AbstractOscillator  end
 
-for cmap in [:Logistic, :Cubic, :Tent, :Henon, :Bernoulli]
-    @eval begin 
-        """
-            $TYPEDEF 
-        # Fields 
-            $TYPEDFIELDS
-        """
-        mutable struct $cmap <: AbstractMap 
-            "Initial condition"
-            x::Vector{Float64} 
-            "Initial time"
-            t::Float64 
-        end
-    end
-    if cmap == :Henon 
-        @eval $cmap() = $cmap(rand(2), 0.)
-    else 
-        @eval $cmap() = $cmap(rand(1), 0.)
-    end
+# ----------------------------- Discrete Time Maps --------------------------------- # 
+
+struct Cubic <: AbstractDiscreteOscillator 
+    a::Float64 
+    b::Float64 
+    x::Vector{Float64} 
+    t::Float64
+end
+Cubic() = Cubic(4, 3, rand(1), 0.) 
+(cmap::Cubic)(dx, x, u, t) = ( dx[1] = cmap.a * x[1]^3 - cmap.b * x[1] )
+
+struct Tent <: AbstractDiscreteOscillator
+    a::Float64 
+    b::Float64 
+    c::Float64 
+    x::Vector{Float64}
+    t::Float64 
+end 
+Tent() = Tent(0.6, 0.6, 0.4, rand(1), 0.) 
+(cmap::Tent)(dx, x, u, t) = ( dx[1] = 0 ≤ x[1] ≤ cmap.a ? x[1] / cmap.b : (1 - x[1]) / cmap.c )
+
+struct Henon <: AbstractDiscreteOscillator
+    a::Float64 
+    b::Float64 
+    x::Vector{Float64} 
+    t::Float64 
+end 
+Henon() = Henon(1.4, 0.3, rand(2), 0.)
+
+function (cmap::Henon)(dx, x, u, t)
+    dx[1] = 1 + x[2] - cmap.a * x[1]^2
+    dx[2] = cmap.b * x[1]
+end 
+
+struct Bernoulli <: AbstractDiscreteOscillator
+    a::Float64 
+    x::Vector{Float64} 
+    t::Float64 
+end 
+Bernoulli() = Bernoulli(1.2, rand(1), 0.) 
+(cmap::Bernoulli)(dx, x, u, t) = ( dx[1] = x[1] < 0 ? cmap.a * x[1] + 1 : cmap.a * x[1] - 1 )
+
+# ----------------------------- Continuous Time Maps --------------------------------- # 
+
+struct Lorenz <: AbstractContinuousOscillator
+    σ::Float64 
+    β::Float64 
+    ρ::Float64 
+    γ::Float64
+    x::Vector{Float64} 
+    t::Float64 
+end 
+Lorenz() = Lorenz(10, 8 / 3, 28, 1, rand(3), 0) 
+
+function (cmap::Lorenz)(dx, x, u, t) 
+    dx[1] = cmap.σ * (x[2] - x[1]) 
+    dx[2] = x[1] * (cmap.ρ - x[3]) - x[2] 
+    dx[3] = x[1] * x[2] - cmap.β * x[3]
+end 
+
+struct Diode 
+    a::Float64 
+    b::Float64
+    bp::Float64 
+end
+Diode() = Diode(-1.143, -0.714, 1.) 
+function (diode::Diode)(x) 
+    if x < -cmap.bp 
+        cmap.b * x + (cmap.b - cmap.a) * cmap.bp
+    elseif -cmap.bp ≤ x ≤ cmap.bp 
+        cmap.a * x
+    elseif x > cmap.bp 
+        cmap.b * x +  (cmap.a - cmap.b) * bp1
+    end 
+end 
+
+struct Chua <: AbstractContinuousOscillator
+    α::Float64 
+    β::Float64 
+    h::Diode 
+    x::Vector{Float64} 
+    t::Float64
+end
+Chua() = Chua(15, 28, Diode(), rand(3), 0.)
+
+function (cmap::Chua)(dx, x, u, t) 
+    dx[1] = cmap.α * (x[2] - x[1] - cmap.h(x[1]))
+    dx[2] = x[1] - x[2] + x[3] 
+    dx[3] = -β * x[2] 
+end 
+
+
+struct Rossler <: AbstractContinuousOscillator
+    a::Float64 
+    b::Float64 
+    c::Float64 
+    x::Vector{Float64} 
+    t::Float64 
+end 
+Rossler() = Rossler(0.38, 0.3, 4.82, rand(3), 0.)
+
+function (cmap::Rossler)(dx, x, u, t)
+    dx[1] = -x[2] - x[3]
+    dx[2] = x[1] + cmap.a * x[2]
+    dx[3] = cmap.b + x[3] * (x[1] - cmap.c)
 end
 
-(cmap::Logistic)(dx, x, u, t)  = ( dx[1] = 1 - 2 * x[1]^2 )
-(cmap::Cubic)(dx, x, u, t)     = ( dx[1] = 4 * x[1]^3 - 3x[1] )
-(cmap::Tent)(dx, x, u, t)      = ( dx[1] = 0 ≤ x[1] ≤ 0.6 ? x[1] / 0.6 : (1 - x[1]) / 0.4 )
-(cmap::Henon)(dx, x, u, t)     = ( dx[1] = 1 + x[2] - 1.4 * x[1]^2; dx[2] = 0.3x[1] )
-(cmap::Bernoulli)(dx, x, u, t) = ( dx[1] = x[1] < 0 ? 1.2x[1] + 1 : 1.2x[1] - 1 )
+# --------------------------------------- Methods  -------------------------------------- # 
 
 """
    $SIGNATURES
@@ -43,17 +129,27 @@ normalize(x) = (x .- mean(x)) / std(x)
 
 Returns the dimension of the state space of `cmap`. 
 """
-statedim(cmap::AbstractMap) = length(cmap.x)
+statedim(cmap::AbstractOscillator) = length(cmap.x)
 
 """
     $SIGNATURES
 
-Returns a trajectory of `camp` for a time span of `tspan`. `idx` is the indices of trajectory to be returned. 
+Returns a trajectory! of `camp` for a time span of `trange`. `idx` is the indices of trajectory! to be returned. 
 """
-function trajectory(cmap::AbstractMap, dt, idx=1)
-    sol = solve(DiscreteProblem(cmap, cmap.x, (cmap.t, cmap.t + dt)))
+function trajectory! end 
+
+function trajectory!(cmap::AbstractDiscreteOscillator, trange, idx=1)
+    sol = solve(DiscreteProblem(cmap, cmap.x, (cmap.t, cmap.t + trange)))
     cmap.t = sol.t[end] 
     cmap.x = sol.u[end]
     map(i -> normalize(getindex.(sol.u, i)), idx) 
 end
+
+function trajectory!(cmap::AbstractContinuousOscillator, trange, tsample, idx=1) 
+    sol = solve(ODEProblem(cmap, cmap.x, (cmap.t, cmap.t + trange)), saveat=tsample)
+    cmap.t = sol.t[end] 
+    cmap.x = sol.u[end]
+    map(i -> normalize(getindex.(sol.u, i)), idx) 
+end 
+
 
