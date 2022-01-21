@@ -1,6 +1,6 @@
 # This file includes blocks of the communication systems 
 
-export SymbolGenerator, Modulator, AWGNChannel, Detector
+export SymbolGenerator, Modulator, AWGNChannel, Detector, CSK, DCSK, iscontinuous, dbtoval, valtodb
 
 # ------------------------------ Symbol Generator --------------------------------- # 
 
@@ -62,14 +62,19 @@ end
 function discmodulate!(modulator::Modulator, symbols)
     K = numsamples(modulator) 
     refs = map(gen -> trajectory!(gen, K - 1), modulator.gens)
-    refs, refs[symbols]
+    refs, map(enumerate(symbols)) do (i, symbol) 
+        refs[symbols][i]
+    end 
 end
 
 function contmodulate!(modulator::Modulator, symbols)
+    numsymbols = length(symbols)
     tf = modulator.tsymbol 
     ts = modulator.tsample
-    refs = map(gen -> trajectory!(gen, tf - ts, ts), modulator.gens)
-    refs, refs[symbols]
+    refs = map(gen -> [trajectory!(gen, tf - ts, ts) for i in 1 : numsymbols], modulator.gens)
+    refs, map(enumerate(symbols)) do (i, symbol) 
+        refs[symbol][i] 
+    end 
 end
 
 """
@@ -77,14 +82,14 @@ end
 
 Returns true if `modulator` operates in continuous time 
 """
-iscontinuous(modulator::Modulator) = typeof(modulator.scheme) <: AbstractContinuousOscillator
+iscontinuous(modulator::Modulator) = eltype(modulator.gens) <: AbstractContinuousOscillator
 
 """
     $SIGNATURES
 
 Returns the number of samples per symbol of `modulator` 
 """
-numsamples(modulator::Modulator) = Int(modulator.tsymbol / modulator.tsample)
+numsamples(modulator::Modulator) = floor(Int, modulator.tsymbol / modulator.tsample)
 
 
 # ------------------------------ Channel  --------------------------------- # 
@@ -109,10 +114,11 @@ end
 function (channel::AWGNChannel)(tx) 
     numsymbols = length(tx) 
     numsamples = length(tx[1]) 
-    ts = channel.tsample
-    Es = sum(energy.(tx)) / numsymbols 
-    No = Es / (2 * dbtoval(channel.esno)) * ts 
-    n = collect(eachrow(sqrt(σ) * randn(numsymbols, numsamples)))
+    # fs = 1 / channel.tsample
+    Es = mean(energy.(tx))
+    # σ = sqrt(Es * fs / 2 / dbtoval(channel.esno))
+    σ = sqrt(Es / 2 / dbtoval(channel.esno))
+    n = collect(eachrow(σ * randn(numsymbols, numsamples)))
     tx + n
 end 
 
@@ -145,8 +151,11 @@ Correlation detector
 """
 struct Detector end
 
-function (detector)(refs, rx)
-    map(enumerate(rx)) do (i, rxi) 
-        argmax(map(ref -> map(rxi ⋅ ref[i]), refs)) 
-    end
+function (detector::Detector)(refs, rx, getstats::Bool=false)
+    y = map(rxi -> dot(rxi, (refs[1] - refs[2])), rx)
+    symbols = map(yi -> yi ≥ 0 ? 1 : 2,  y)
+    getstats ? (symbols, mean(y), var(y)) : symbols
+    # map(enumerate(rx)) do (i, rxi) 
+    #     argmax(map(ref -> rxi ⋅ ref[i], refs)) 
+    # end
 end
