@@ -81,8 +81,8 @@ Base.@kwdef mutable struct Chen <: AbstractContinuousOscillator
     c::Float64 = 28.0
     β::Float64 = 8 / 3
     γ::Float64 = 1.0
-    x::Vector{Float64}
-    t::Float64
+    x::Vector{Float64} = rand(3)
+    t::Float64 = 0.0
 end
 
 function (cmap::Chen)(dx, x, u, t)
@@ -163,15 +163,15 @@ Returns a trajectory! of `camp` for a time span of `trange`. `idx` is the indice
 """
 function trajectory! end
 
-function trajectory!(cmap::AbstractDiscreteOscillator, trange::Real, idx::Int=1)
+function trajectory!(cmap::AbstractDiscreteOscillator, trange::Real, idx::Union{<:AbstractVector,<:Int}=1; normalized::Bool=true)
     probf = (dx, x, u, t) -> cmap(dx, x, u, t)
     sol = solve(DiscreteProblem(probf, cmap.x, (cmap.t, cmap.t + trange)))
     cmap.t = sol.t[end]
     cmap.x = sol.u[end]
-    map(i -> normalize(getindex.(sol.u, i)), idx)
+    normalized ? map(i -> normalize(getindex.(sol.u, i)), idx) : map(i -> getindex.(sol.u, i), idx)
 end
 
-function trajectory!(cmap::AbstractContinuousOscillator, trange::Real, tsample::Real, idx=1)
+function trajectory!(cmap::AbstractContinuousOscillator, trange::Real, tsample::Real, idx::Union{<:AbstractVector,<:Int}=1; normalized::Bool=true)
     sol = solve(ODEProblem(cmap, cmap.x, (cmap.t, cmap.t + trange)), saveat=tsample)
     ns = floor(Int, trange / tsample) + 1
     if length(sol) > ns
@@ -179,7 +179,7 @@ function trajectory!(cmap::AbstractContinuousOscillator, trange::Real, tsample::
     end
     cmap.t = sol.t[end]
     cmap.x = sol.u[end]
-    map(i -> normalize(getindex.(sol.u, i)), idx)
+    normalized ? map(i -> normalize(getindex.(sol.u, i)), idx) : map(i -> getindex.(sol.u, i), idx)
 end
 
 
