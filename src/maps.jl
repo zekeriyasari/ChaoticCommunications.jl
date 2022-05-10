@@ -1,7 +1,7 @@
 # This file includes chaotic maps 
 
 export Logistic, Cubic, Tent, Henon, Bernoulli,
-    Lorenz, Chua, Rossler,
+    Lorenz, Chua, Rossler, Chen,
     trajectory!, normalize
 
 abstract type AbstractOscillator end
@@ -76,6 +76,23 @@ function (cmap::Lorenz)(dx, x, u, t)
     dx[3] = x[1] * x[2] - cmap.β * x[3]
 end
 
+Base.@kwdef mutable struct Chen <: AbstractContinuousOscillator
+    a::Float64 = 35.0
+    c::Float64 = 28.0
+    β::Float64 = 8 / 3
+    γ::Float64 = 1.0
+    x::Vector{Float64}
+    t::Float64
+end
+
+function (cmap::Chen)(dx, x, u, t)
+    dx[1] = cmap.a * (x[2] - x[1])
+    dx[2] = (cmap.c - cmap.a - x[3]) * x[1] + cmap.c * x[2]
+    dx[3] = x[1] * x[2] - cmap.β * x[3]
+    dx .*= cmap.γ
+end
+
+
 struct Diode
     a::Float64
     b::Float64
@@ -146,7 +163,7 @@ Returns a trajectory! of `camp` for a time span of `trange`. `idx` is the indice
 """
 function trajectory! end
 
-function trajectory!(cmap::AbstractDiscreteOscillator, trange, idx = 1)
+function trajectory!(cmap::AbstractDiscreteOscillator, trange::Real, idx::Int=1)
     probf = (dx, x, u, t) -> cmap(dx, x, u, t)
     sol = solve(DiscreteProblem(probf, cmap.x, (cmap.t, cmap.t + trange)))
     cmap.t = sol.t[end]
@@ -154,8 +171,8 @@ function trajectory!(cmap::AbstractDiscreteOscillator, trange, idx = 1)
     map(i -> normalize(getindex.(sol.u, i)), idx)
 end
 
-function trajectory!(cmap::AbstractContinuousOscillator, trange, tsample, idx = 1)
-    sol = solve(ODEProblem(cmap, cmap.x, (cmap.t, cmap.t + trange)), saveat = tsample)
+function trajectory!(cmap::AbstractContinuousOscillator, trange::Real, tsample::Real, idx=1)
+    sol = solve(ODEProblem(cmap, cmap.x, (cmap.t, cmap.t + trange)), saveat=tsample)
     ns = floor(Int, trange / tsample) + 1
     if length(sol) > ns
         sol = sol[1:ns]

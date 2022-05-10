@@ -16,7 +16,7 @@ Bit generator
 struct SymbolGenerator
     "Generated symbols"
     symbols::Vector{Int}
-    SymbolGenerator(ns::Int, M::Int) = new(rand(1:M, ns)) 
+    SymbolGenerator(ns::Int, M::Int) = new(rand(1:M, ns))
 end
 
 # ------------------------------ CSK Modulator --------------------------------- # 
@@ -28,14 +28,14 @@ abstract type AbstractScheme end
 
 Chaos Shift Keying scheme 
 """
-struct CSK <: AbstractScheme end 
+struct CSK <: AbstractScheme end
 
 """
     $TYPEDEF
 
 Differential Chaos Shift Keying
-""" 
-struct DCSK <: AbstractScheme end 
+"""
+struct DCSK <: AbstractScheme end
 
 """
     $TYPEDEF
@@ -46,35 +46,35 @@ Chaos-Shif-Keying Modulator
 
     $TYPEDFIELDS
 """
-struct Modulator{T<:AbstractScheme, S<:AbstractOscillator} 
+struct Modulator{T<:AbstractScheme,S<:AbstractOscillator}
     "Modulation scheme"
-    scheme::T 
+    scheme::T
     "Chaotic generator"
     gens::Vector{S}
     "Symbol duration"
-    tsymbol::Float64 
+    tsymbol::Float64
     "Sampling period"
-    tsample::Float64 
-end 
+    tsample::Float64
+end
 
-(mdltr::Modulator)(symbols) = iscontinuous(mdltr) ? contmodulate!(mdltr, symbols) : discmodulate!(mdltr, symbols) 
+(mdltr::Modulator)(symbols) = iscontinuous(mdltr) ? contmodulate!(mdltr, symbols) : discmodulate!(mdltr, symbols)
 
 function discmodulate!(modulator::Modulator, symbols)
-    K = numsamples(modulator) 
+    K = numsamples(modulator)
     refs = map(gen -> trajectory!(gen, K - 1), modulator.gens)
-    refs, map(enumerate(symbols)) do (i, symbol) 
-        refs[symbols][i]
-    end 
+    refs, map(enumerate(symbols)) do (i, symbol)
+        refs[symbol][i]
+    end
 end
 
 function contmodulate!(modulator::Modulator, symbols)
     numsymbols = length(symbols)
-    tf = modulator.tsymbol 
+    tf = modulator.tsymbol
     ts = modulator.tsample
-    refs = map(gen -> [trajectory!(gen, tf - ts, ts) for i in 1 : numsymbols], modulator.gens)
-    refs, map(enumerate(symbols)) do (i, symbol) 
-        refs[symbol][i] 
-    end 
+    refs = map(gen -> [trajectory!(gen, tf - ts, ts) for i in 1:numsymbols], modulator.gens)
+    refs, map(enumerate(symbols)) do (i, symbol)
+        refs[symbol][i]
+    end
 end
 
 """
@@ -102,46 +102,46 @@ Additive white Gaussian noise channel
 # Fields 
     $TYPEDFIELDS
 """
-mutable struct AWGNChannel 
+mutable struct AWGNChannel
     "Energy per symbol to noise power spectral density ratio (in dB)"
-    esno::Float64 
+    esno::Float64
     "Symbol duration"
-    tsymbol::Float64 
+    tsymbol::Float64
     "Sampling period"
-    tsample::Float64 
+    tsample::Float64
 end
 
-function (channel::AWGNChannel)(tx) 
-    numsymbols = length(tx) 
-    numsamples = length(tx[1]) 
+function (channel::AWGNChannel)(tx)
+    numsymbols = length(tx)
+    numsamples = length(tx[1])
     # fs = 1 / channel.tsample
     Es = mean(energy.(tx))
     # σ = sqrt(Es * fs / 2 / dbtoval(channel.esno))
     σ = sqrt(Es / 2 / dbtoval(channel.esno))
     n = collect(eachrow(σ * randn(numsymbols, numsamples)))
     tx + n
-end 
+end
 
 """
     $SIGNATURES 
 
 Converts `dB` to numerical value.
 """
-dbtoval(db) = 10^(db / 10) 
+dbtoval(db) = 10^(db / 10)
 
 """
     $SIGNATURES 
 
 Converts `dB` to numerical value.
 """
-valtodb(db) = 10 * log10(db) 
+valtodb(db) = 10 * log10(db)
 
 """
     $SIGNATURES 
 
 Returns the energy of `x` sampled with a sampling frequency `ts`.
 """
-energy(x, ts=1) = sum(abs.(x).^2) * ts
+energy(x, ts=1) = sum(abs.(x) .^ 2) * ts
 
 # ---------------------------------- Detector --------------------------------- # 
 """
@@ -153,7 +153,7 @@ struct Detector end
 
 function (detector::Detector)(refs, rx, getstats::Bool=false)
     y = map(rxi -> dot(rxi, (refs[1] - refs[2])), rx)
-    symbols = map(yi -> yi ≥ 0 ? 1 : 2,  y)
+    symbols = map(yi -> yi ≥ 0 ? 1 : 2, y)
     getstats ? (symbols, mean(y), var(y)) : symbols
     # map(enumerate(rx)) do (i, rxi) 
     #     argmax(map(ref -> rxi ⋅ ref[i], refs)) 
