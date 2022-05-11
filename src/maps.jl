@@ -165,18 +165,14 @@ function trajectory! end
 
 function trajectory!(cmap::AbstractDiscreteOscillator, trange::Real, idx::Union{<:AbstractVector,<:Int}=1; normalized::Bool=true)
     probf = (dx, x, u, t) -> cmap(dx, x, u, t)
-    sol = solve(DiscreteProblem(probf, cmap.x, (cmap.t, cmap.t + trange)))
+    sol = solve(DiscreteProblem(probf, cmap.x, (0.0, trange - tsample)))
     cmap.t = sol.t[end]
     cmap.x = sol.u[end]
     normalized ? map(i -> normalize(getindex.(sol.u, i)), idx) : map(i -> getindex.(sol.u, i), idx)
 end
 
 function trajectory!(cmap::AbstractContinuousOscillator, trange::Real, tsample::Real, idx::Union{<:AbstractVector,<:Int}=1; normalized::Bool=true)
-    sol = solve(ODEProblem(cmap, cmap.x, (cmap.t, cmap.t + trange)), saveat=tsample)
-    ns = floor(Int, trange / tsample) + 1
-    if length(sol) > ns
-        sol = sol[1:ns]
-    end
+    sol = solve(ODEProblem(cmap, cmap.x, (0.0, trange - tsample)), saveat=tsample)
     cmap.t = sol.t[end]
     cmap.x = sol.u[end]
     normalized ? map(i -> normalize(getindex.(sol.u, i)), idx) : map(i -> getindex.(sol.u, i), idx)
