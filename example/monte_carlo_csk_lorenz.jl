@@ -17,29 +17,39 @@ comsys = CommunicationSystem(
 )
 
 # Run simulation 
-esno = 0:2:12
+esno = 0:2:10
 
 # Transmisssion
 msg = comsys.symbolgen.symbols
 refs, tx = comsys.modulator(msg)
 
-# Corruption and detection 
-symerr_numerical = map(esno) do val
-    @info "Running $val dB"
-    comsys.channel.esno = val
-    rx = comsys.channel(tx)
-    msgext = comsys.detector(refs, rx)
-    sum(msg .!= msgext) / length(msg)
+# Rescale symbol energy 
+ϵ = 10
+γ = √2ϵ
+
+let tx = tx
+    for γi ∈ [1, γ]
+        tx *= γi
+        # Corruption and detection 
+        symerr_numerical = map(esno) do val
+            @info "Running $val dB"
+            comsys.channel.esno = val
+            rx = comsys.channel(tx)
+            msgext = comsys.detector(refs, rx)
+            sum(msg .!= msgext) / length(msg)
+        end
+        nusers = 1
+        symerr_theoretical = map(val -> bermacsk(val, comsys.modulator.gens[1], tsymbol, tsample, nusers), esno)
+
+        # Plots 
+        figure()
+        plot(esno, symerr_numerical, marker="o", label="Numerical")
+        plot(esno, symerr_theoretical, marker="*", label="Theoretial")
+        legend()
+        yscale("log")
+        grid(which="both", axis="both")
+        xlabel("EsNo [dB]")
+        ylabel("Pe")
+        savefig(joinpath(@__DIR__, "bersym_gamma_$(round(γi, digits=3)).pdf"))
+    end
 end
-
-nusers = 1
-symerr_theoretical = map(val -> bermacsk(val, comsys.modulator.gens[1], tsymbol, tsample, nusers), esno)
-
-# Plots 
-plot(esno, symerr_numerical, marker="o")
-plot(esno, symerr_theoretical, marker="*")
-yscale("log")
-grid(which="both", axis="both")
-xlabel("EsNo [dB]")
-ylabel("Pe")
-ylim(10^-5, 10^0)
