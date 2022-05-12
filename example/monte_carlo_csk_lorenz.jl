@@ -11,7 +11,7 @@ tsymbol = 10.0
 tsample = 0.01
 comsys = CommunicationSystem(
     SymbolGenerator(ns, M),
-    Modulator(CSK(), [Lorenz(), Lorenz()], tsymbol, tsample),
+    Modulator(CSK(), [Chen(), Chen()], tsymbol, tsample),
     AWGNChannel(1.0, tsymbol, tsample),
     Detector()
 )
